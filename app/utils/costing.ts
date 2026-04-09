@@ -129,7 +129,7 @@ export function createDefaultRecipe(id: string): RecipeCostInput {
     servings: null,
     laborHours: null,
     laborRatePerHour: 25,
-    overheadFixed: 0,
+    overheadFixed: 50,
     overheadPercent: 0,
     profitPercent: 30,
     recommendedSellingPrice: null,

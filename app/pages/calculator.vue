@@ -15,7 +15,7 @@
         @remove-ingredient="handleRemoveIngredient"
       />
 
-      <CostSummary :summary="summary" />
+      <CostSummary :summary="summary" :is-active="Boolean(selectedRecipeId)" />
     </div>
     <button type="button" class="floating-save" @click="handleSave">Save recipe</button>
   </section>
@@ -65,7 +65,7 @@ function handleSave() {
 
   saveRecipe(recipe.value)
   populateFromRecipe(recipe.value.ingredients)
-  selectedRecipeId.value = recipe.value.id
+  selectedRecipeId.value = ''
   lastUpdatedAt.value = new Date().toISOString()
 
   saveConfirmationVisible.value = true

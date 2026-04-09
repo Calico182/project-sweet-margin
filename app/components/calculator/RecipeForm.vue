@@ -8,11 +8,12 @@
         <p v-if="lastUpdatedLabel" class="updated-at">Last updated: {{ lastUpdatedLabel }}</p>
       </div>
       <div class="save-tools">
-        <select v-model="selectedRecipeId" @change="onLoadRecipe">
-          <option value="">Recipes</option>
-          <option v-for="saved in savedRecipes" :key="saved.id" :value="saved.id">{{ saved.name }}</option>
-        </select>
-        <button type="button" class="btn" @click="$emit('save')">Save</button>
+        <div v-if="savedRecipes.length" class="recipes-load">
+          <select v-model="selectedRecipeId" @change="onLoadRecipe">
+            <option value="">Saved Recipes</option>
+            <option v-for="saved in savedRecipes" :key="saved.id" :value="saved.id">{{ saved.name }}</option>
+          </select>
+        </div>
         <span v-if="saveConfirmationVisible" class="save-confirmation" aria-live="polite">Saved</span>
         <button type="button" class="btn btn--ghost" @click="$emit('new')">New</button>
         <button type="button" class="btn btn--danger" :disabled="!selectedRecipeId" @click="$emit('delete-selected')">Delete</button>
@@ -20,26 +21,32 @@
     </header>
 
     <section class="panel import-panel">
-      <label>
-        Recipe URL
-        <input
-          v-model="importUrl"
-          type="url"
-          placeholder="https://example.com/recipe"
-          @keydown.enter.prevent="onImport"
-        />
-      </label>
-      <label>
-        Unit system
-        <select v-model="recipe.unitSystem">
-          <option value="metric">Metric (default)</option>
-          <option value="imperial">Imperial</option>
-        </select>
-      </label>
-      <button type="button" class="btn" :disabled="isImporting || !importUrl.trim()" @click="onImport">
-        {{ isImporting ? 'Importing...' : 'Import recipe' }}
-      </button>
+      <template v-if="!recipe.sourceUrl">
+        <label>
+          Recipe URL
+          <input
+            v-model="importUrl"
+            type="url"
+            placeholder="https://example.com/recipe"
+            @keydown.enter.prevent="onImport"
+          />
+        </label>
+        <label>
+          Unit system
+          <select v-model="recipe.unitSystem">
+            <option value="metric">Metric (default)</option>
+            <option value="imperial">Imperial</option>
+          </select>
+        </label>
+        <button type="button" class="btn" :disabled="isImporting || !importUrl.trim()" @click="onImport">
+          {{ isImporting ? 'Importing...' : 'Import recipe' }}
+        </button>
+      </template>
       <p v-if="importError" class="import-error">{{ importError }}</p>
+      <p v-if="recipe.sourceUrl" class="import-source">
+        Source:
+        <a :href="recipe.sourceUrl" target="_blank" rel="noopener noreferrer">{{ recipe.sourceUrl }}</a>
+      </p>
       <ul v-if="parserWarnings.length" class="import-warnings">
         <li v-for="warning in parserWarnings" :key="warning">{{ warning }}</li>
       </ul>
@@ -63,12 +70,11 @@
         <input v-model.number="recipe.laborRatePerHour" type="number" min="0" step="0.01" />
       </label>
       <label>
-        Overhead fixed
+        Utility Cost
         <input v-model.number="recipe.overheadFixed" type="number" min="0" step="0.01" />
-      </label>
-      <label>
-        Overhead %
-        <input v-model.number="recipe.overheadPercent" type="number" min="0" step="0.1" />
+        <small class="field-help">
+          Include shared baking utilities like electricity, gas, water, baking paper/foil, and cleaning consumables.
+        </small>
       </label>
       <label>
         Profit %
@@ -184,17 +190,21 @@ async function onImport() {
 .lede { margin: 0; color: var(--color-text-muted); max-width: 42rem; }
 .updated-at { margin: 0.4rem 0 0; color: var(--color-text-muted); font-size: 0.82rem; }
 .save-tools { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.recipes-load { display: inline-flex; }
 .save-confirmation { color: #116241; font-weight: 600; font-size: 0.86rem; padding: 0 0.1rem; }
 .panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 0.75rem; padding: 1rem; }
 .import-panel { display: grid; gap: 0.8rem; grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr) auto; align-items: end; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
 label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; color: var(--color-text-muted); }
 input, select { padding: 0.5rem 0.6rem; border: 1px solid var(--color-border); border-radius: 0.45rem; background: #fff; }
+.field-help { color: var(--color-text-muted); font-size: 0.76rem; line-height: 1.35; }
 .btn { border: 1px solid var(--color-border); background: #fff; color: var(--color-text); border-radius: 0.45rem; padding: 0.45rem 0.7rem; cursor: pointer; }
 .btn--ghost { background: var(--color-bg); }
 .btn--danger { border-color: #e6c2c8; color: #9f3447; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .import-error { margin: 0; color: #9f3447; grid-column: 1 / -1; }
+.import-source { margin: 0; color: var(--color-text-muted); font-size: 0.86rem; grid-column: 1 / -1; }
+.import-source a { color: var(--color-accent-deep); text-decoration: underline; word-break: break-all; }
 .import-warnings { margin: 0; padding-left: 1rem; color: #8f6a1a; grid-column: 1 / -1; }
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .form__header { flex-direction: column; } .save-tools { justify-content: flex-start; } .import-panel { grid-template-columns: 1fr; } }
 </style>
