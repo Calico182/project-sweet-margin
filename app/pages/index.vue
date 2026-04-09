@@ -11,7 +11,7 @@
         you invoice.
       </p>
       <div class="hero__actions">
-        <span class="pill">Calculator coming soon</span>
+        <NuxtLink to="/calculator" class="pill pill--action">Open calculator</NuxtLink>
       </div>
     </section>
 
@@ -146,6 +146,11 @@ useHead({
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 999px;
+  text-decoration: none;
+}
+
+.pill--action {
+  color: var(--color-accent-deep);
 }
 
 .section {
