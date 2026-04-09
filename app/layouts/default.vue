@@ -14,6 +14,9 @@
             <NuxtLink to="/calculator" class="nav__link">Calculator</NuxtLink>
           </li>
           <li>
+            <NuxtLink to="/pantry" class="nav__link">Pantry</NuxtLink>
+          </li>
+          <li>
             <NuxtLink to="/#features" class="nav__link">Features</NuxtLink>
           </li>
           <li>

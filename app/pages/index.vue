@@ -12,6 +12,7 @@
       </p>
       <div class="hero__actions">
         <NuxtLink to="/calculator" class="pill pill--action">Open calculator</NuxtLink>
+        <NuxtLink to="/pantry" class="pill">Open pantry</NuxtLink>
       </div>
     </section>
 

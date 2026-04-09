@@ -1,3 +1,5 @@
+export type UnitSystem = 'metric' | 'imperial'
+
 export type IngredientUnit =
   | 'g'
   | 'kg'
@@ -6,6 +8,8 @@ export type IngredientUnit =
   | 'tsp'
   | 'tbsp'
   | 'cup'
+  | 'oz'
+  | 'lb'
   | 'each'
 
 export interface IngredientInput {
@@ -13,21 +17,40 @@ export interface IngredientInput {
   name: string
   recipeQuantity: number
   recipeUnit: IngredientUnit
-  purchaseQuantity: number
-  purchaseUnit: IngredientUnit
-  purchasePrice: number
   wastePercent: number
+  rawText?: string
+  parseConfidence?: number
+  parseNote?: string
+}
+
+export interface MasterIngredient {
+  id: string
+  name: string
+  unitQuantity: number
+  unit: IngredientUnit
+  unitPrice: number
+  priceHistory: Array<{
+    at: string
+    unitQuantity: number
+    unit: IngredientUnit
+    unitPrice: number
+  }>
+  defaultWastePercent: number
+  updatedAt: string
 }
 
 export interface RecipeCostInput {
   id: string
   name: string
-  servings: number
-  laborMinutes: number
+  servings: number | null
+  laborHours: number | null
   laborRatePerHour: number
   overheadFixed: number
   overheadPercent: number
   profitPercent: number
+  recommendedSellingPrice: number | null
+  unitSystem: UnitSystem
+  sourceUrl?: string
   ingredients: IngredientInput[]
 }
 

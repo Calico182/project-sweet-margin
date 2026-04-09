@@ -1,14 +1,18 @@
 import type {
   IngredientCostBreakdown,
   IngredientInput,
+  MasterIngredient,
   IngredientUnit,
   RecipeCostInput,
-  RecipeCostSummary
+  RecipeCostSummary,
+  UnitSystem
 } from '~/types/calculator'
 
 const unitCategory: Record<IngredientUnit, 'mass' | 'volume' | 'count'> = {
   g: 'mass',
   kg: 'mass',
+  oz: 'mass',
+  lb: 'mass',
   ml: 'volume',
   l: 'volume',
   tsp: 'volume',
@@ -20,12 +24,27 @@ const unitCategory: Record<IngredientUnit, 'mass' | 'volume' | 'count'> = {
 const unitToBaseFactor: Record<IngredientUnit, number> = {
   g: 1,
   kg: 1000,
+  oz: 28.3495,
+  lb: 453.592,
   ml: 1,
   l: 1000,
   tsp: 5,
   tbsp: 15,
   cup: 240,
   each: 1
+}
+
+const densityGPerMlByIngredient: Record<string, number> = {
+  'baking soda': 0.92,
+  cornstarch: 0.54,
+  salt: 1.2
+}
+
+export function getUnitsForSystem(unitSystem: UnitSystem): IngredientUnit[] {
+  if (unitSystem === 'imperial') {
+    return ['oz', 'lb', 'tsp', 'tbsp', 'cup', 'ml', 'l', 'each']
+  }
+  return ['g', 'kg', 'ml', 'l', 'tsp', 'tbsp', 'cup', 'each']
 }
 
 export function roundMoney(value: number): number {
@@ -43,15 +62,62 @@ function clampNonNegative(value: number): number {
   return value
 }
 
+function getDensityGPerMl(ingredientName: string): number | null {
+  const key = normalizeIngredientKey(ingredientName)
+  const exact = densityGPerMlByIngredient[key]
+  if (exact) return exact
+
+  for (const [name, density] of Object.entries(densityGPerMlByIngredient)) {
+    if (key.includes(name)) return density
+  }
+  return null
+}
+
+function convertRequiredToPackBase(
+  ingredient: IngredientInput,
+  masterIngredient: MasterIngredient,
+  wastePercent: number
+): { ok: true; requiredInPackBase: number } | { ok: false; note: string } {
+  const recipeCategory = unitCategory[ingredient.recipeUnit]
+  const packCategory = unitCategory[masterIngredient.unit]
+
+  const recipeBase = toBaseUnit(clampNonNegative(ingredient.recipeQuantity), ingredient.recipeUnit)
+  const requiredWithWaste = recipeBase * (1 + wastePercent / 100)
+
+  if (recipeCategory === packCategory) {
+    return { ok: true, requiredInPackBase: requiredWithWaste }
+  }
+
+  const isMassVolumePair =
+    (recipeCategory === 'volume' && packCategory === 'mass') ||
+    (recipeCategory === 'mass' && packCategory === 'volume')
+
+  if (!isMassVolumePair) {
+    return { ok: false, note: 'Recipe unit and master ingredient unit must be compatible.' }
+  }
+
+  const density = getDensityGPerMl(ingredient.name)
+  if (!density) {
+    return {
+      ok: false,
+      note: 'Need density conversion for this ingredient. Use matching unit types or add density support.'
+    }
+  }
+
+  if (recipeCategory === 'volume' && packCategory === 'mass') {
+    return { ok: true, requiredInPackBase: requiredWithWaste * density }
+  }
+
+  // recipe mass -> pack volume
+  return { ok: true, requiredInPackBase: requiredWithWaste / density }
+}
+
 export function createEmptyIngredient(id: string): IngredientInput {
   return {
     id,
     name: '',
     recipeQuantity: 0,
     recipeUnit: 'g',
-    purchaseQuantity: 0,
-    purchaseUnit: 'g',
-    purchasePrice: 0,
     wastePercent: 0
   }
 }
@@ -60,33 +126,37 @@ export function createDefaultRecipe(id: string): RecipeCostInput {
   return {
     id,
     name: 'New recipe',
-    servings: 12,
-    laborMinutes: 60,
+    servings: null,
+    laborHours: null,
     laborRatePerHour: 25,
     overheadFixed: 0,
     overheadPercent: 0,
     profitPercent: 30,
+    recommendedSellingPrice: null,
+    unitSystem: 'metric',
+    sourceUrl: '',
     ingredients: [createEmptyIngredient(crypto.randomUUID())]
   }
 }
 
 export function calculateIngredientLine(
-  ingredient: IngredientInput
+  ingredient: IngredientInput,
+  masterIngredient?: MasterIngredient
 ): IngredientCostBreakdown {
-  const recipeQty = clampNonNegative(ingredient.recipeQuantity)
-  const packQty = clampNonNegative(ingredient.purchaseQuantity)
-  const packPrice = clampNonNegative(ingredient.purchasePrice)
-  const wastePercent = clampNonNegative(ingredient.wastePercent)
+  const packQty = clampNonNegative(masterIngredient?.unitQuantity ?? 0)
+  const packPrice = clampNonNegative(masterIngredient?.unitPrice ?? 0)
+  const wastePercent = clampNonNegative(
+    ingredient.wastePercent > 0
+      ? ingredient.wastePercent
+      : (masterIngredient?.defaultWastePercent ?? 0)
+  )
 
-  const recipeCategory = unitCategory[ingredient.recipeUnit]
-  const packCategory = unitCategory[ingredient.purchaseUnit]
-
-  if (recipeCategory !== packCategory) {
+  if (!masterIngredient) {
     return {
       ...ingredient,
       lineCost: 0,
       valid: false,
-      note: 'Recipe unit and purchase unit must be compatible.'
+      note: 'Ingredient not found in master list.'
     }
   }
 
@@ -95,35 +165,63 @@ export function calculateIngredientLine(
       ...ingredient,
       lineCost: 0,
       valid: false,
-      note: 'Purchase quantity must be greater than 0.'
+      note: 'Unit quantity in master list must be greater than 0.'
     }
   }
 
-  const requiredBase =
-    toBaseUnit(recipeQty, ingredient.recipeUnit) * (1 + wastePercent / 100)
-  const packBase = toBaseUnit(packQty, ingredient.purchaseUnit)
+  const converted = convertRequiredToPackBase(ingredient, masterIngredient, wastePercent)
+  if (!converted.ok) {
+    return {
+      ...ingredient,
+      lineCost: 0,
+      valid: false,
+      note: converted.note
+    }
+  }
+
+  const packBase = toBaseUnit(packQty, masterIngredient.unit)
   const costPerBase = packPrice / packBase
 
   return {
     ...ingredient,
-    lineCost: roundMoney(requiredBase * costPerBase),
+    lineCost: roundMoney(converted.requiredInPackBase * costPerBase),
     valid: true
   }
 }
 
-export function calculateRecipeSummary(input: RecipeCostInput): RecipeCostSummary {
-  const ingredientLines = input.ingredients.map(calculateIngredientLine)
-  const warnings = ingredientLines.filter((line) => !line.valid).map((line) => {
-    const label = line.name.trim() || 'Unnamed ingredient'
-    return `${label}: ${line.note ?? 'Invalid ingredient data.'}`
+export function normalizeIngredientKey(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+export function calculateRecipeSummary(
+  input: RecipeCostInput,
+  masterIngredients: MasterIngredient[] = []
+): RecipeCostSummary {
+  const byName = new Map(
+    masterIngredients.map((item) => [normalizeIngredientKey(item.name), item] as const)
+  )
+  const ingredientLines = input.ingredients.map((ingredient) => {
+    const match = byName.get(normalizeIngredientKey(ingredient.name))
+    return calculateIngredientLine(ingredient, match)
   })
+  const warnings = ingredientLines
+    .filter((line) => !line.valid)
+    .filter((line) => line.name.trim().length > 0)
+    .filter((line) => line.note !== 'Ingredient not found in master list.')
+    .map((line) => `${line.name.trim()}: ${line.note ?? 'Invalid ingredient data.'}`)
 
   const ingredientsCost = roundMoney(
     ingredientLines.reduce((sum, line) => sum + (line.valid ? line.lineCost : 0), 0)
   )
 
   const laborCost = roundMoney(
-    (clampNonNegative(input.laborMinutes) / 60) *
+    clampNonNegative(input.laborHours ?? 0) *
       clampNonNegative(input.laborRatePerHour)
   )
 
@@ -140,7 +238,7 @@ export function calculateRecipeSummary(input: RecipeCostInput): RecipeCostSummar
   )
   const totalPrice = roundMoney(baseCost + profitAmount)
 
-  const servings = clampNonNegative(input.servings)
+  const servings = clampNonNegative(input.servings ?? 0)
   const divisor = servings > 0 ? servings : 1
 
   return {
@@ -158,9 +256,9 @@ export function calculateRecipeSummary(input: RecipeCostInput): RecipeCostSummar
 }
 
 export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-ZA', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'ZAR',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(value)
