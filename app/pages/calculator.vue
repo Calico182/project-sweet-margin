@@ -5,7 +5,7 @@
         v-model="recipe"
         v-model:selected-recipe-id="selectedRecipeId"
         :saved-recipes="recipes"
-        :save-confirmation-visible="saveConfirmationVisible"
+        :save-notice="saveNotice"
         :last-updated-label="lastUpdatedLabel"
         @save="handleSave"
         @new="handleNew"
@@ -44,8 +44,11 @@ useHead({
 const recipe = ref<RecipeCostInput>(createDefaultRecipe(crypto.randomUUID()))
 const selectedRecipeId = ref<string | ''>('')
 const lastUpdatedAt = ref<string | null>(null)
-const saveConfirmationVisible = ref(false)
-let saveConfirmationTimer: ReturnType<typeof setTimeout> | null = null
+const saveNotice = ref<{ type: 'success' | 'error'; message: string }>({
+  type: 'success',
+  message: ''
+})
+let saveNoticeTimer: ReturnType<typeof setTimeout> | null = null
 
 const { recipes, saveRecipe, deleteRecipe, getRecipe } = useRecipeStorage()
 const { items: masterIngredients, populateFromRecipe } = useMasterIngredients()
@@ -63,18 +66,22 @@ function handleSave() {
     recipe.value.name = 'Untitled recipe'
   }
 
-  saveRecipe(recipe.value)
-  populateFromRecipe(recipe.value.ingredients)
-  selectedRecipeId.value = ''
-  lastUpdatedAt.value = new Date().toISOString()
-
-  saveConfirmationVisible.value = true
-  if (saveConfirmationTimer) {
-    clearTimeout(saveConfirmationTimer)
+  try {
+    saveRecipe(recipe.value)
+    populateFromRecipe(recipe.value.ingredients)
+    selectedRecipeId.value = ''
+    lastUpdatedAt.value = new Date().toISOString()
+    saveNotice.value = { type: 'success', message: 'Saved successfully!' }
+  } catch {
+    saveNotice.value = { type: 'error', message: 'Could not save. Please try again.' }
   }
-  saveConfirmationTimer = setTimeout(() => {
-    saveConfirmationVisible.value = false
-  }, 1800)
+
+  if (saveNoticeTimer) {
+    clearTimeout(saveNoticeTimer)
+  }
+  saveNoticeTimer = setTimeout(() => {
+    saveNotice.value = { ...saveNotice.value, message: '' }
+  }, 2600)
 }
 
 function handleNew() {

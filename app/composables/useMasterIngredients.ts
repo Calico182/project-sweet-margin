@@ -41,11 +41,7 @@ function createFromRecipeIngredient(ingredient: IngredientInput): MasterIngredie
 
 function trackPriceChange(previous: MasterIngredient | undefined, next: MasterIngredient) {
   const history = [...(previous?.priceHistory ?? next.priceHistory ?? [])]
-  const changed =
-    !previous ||
-    previous.unitPrice !== next.unitPrice ||
-    previous.unitQuantity !== next.unitQuantity ||
-    previous.unit !== next.unit
+  const changed = !previous || previous.unitPrice !== next.unitPrice
 
   if (changed) {
     history.push({

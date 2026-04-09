@@ -14,7 +14,15 @@
             <option v-for="saved in savedRecipes" :key="saved.id" :value="saved.id">{{ saved.name }}</option>
           </select>
         </div>
-        <span v-if="saveConfirmationVisible" class="save-confirmation" aria-live="polite">Saved</span>
+        <span
+          v-if="saveNotice.message"
+          class="save-notice"
+          :class="saveNotice.type === 'error' ? 'save-notice--error' : 'save-notice--success'"
+          aria-live="polite"
+        >
+          <span v-if="saveNotice.type === 'error'">Oops! {{ saveNotice.message }}</span>
+          <span v-else>🎂 {{ saveNotice.message }}</span>
+        </span>
         <button type="button" class="btn btn--ghost" @click="$emit('new')">New</button>
         <button type="button" class="btn btn--danger" :disabled="!selectedRecipeId" @click="$emit('delete-selected')">Delete</button>
       </div>
@@ -32,7 +40,7 @@
           />
         </label>
         <label>
-          Unit system
+          Unit System
           <select v-model="recipe.unitSystem">
             <option value="metric">Metric (default)</option>
             <option value="imperial">Imperial</option>
@@ -54,7 +62,7 @@
 
     <section class="panel grid">
       <label>
-        Recipe name
+        Recipe Name
         <input v-model="recipe.name" type="text" />
       </label>
       <label>
@@ -62,11 +70,11 @@
         <input v-model.number="recipe.servings" type="number" min="1" step="1" placeholder="e.g. 12" />
       </label>
       <label>
-        Labor hours
+        Labour Hours
         <input v-model.number="recipe.laborHours" type="number" min="0" step="0.25" placeholder="e.g. 2.5" />
       </label>
       <label>
-        Labor rate / hour
+        Labour Rate / Hour
         <input v-model.number="recipe.laborRatePerHour" type="number" min="0" step="0.01" />
       </label>
       <label>
@@ -119,7 +127,7 @@ const selectedRecipeId = defineModel<string | ''>('selectedRecipeId', {
 
 defineProps<{
   savedRecipes: SavedRecipe[]
-  saveConfirmationVisible: boolean
+  saveNotice: { type: 'success' | 'error'; message: string }
   lastUpdatedLabel: string
 }>()
 
@@ -191,7 +199,9 @@ async function onImport() {
 .updated-at { margin: 0.4rem 0 0; color: var(--color-text-muted); font-size: 0.82rem; }
 .save-tools { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .recipes-load { display: inline-flex; }
-.save-confirmation { color: #116241; font-weight: 600; font-size: 0.86rem; padding: 0 0.1rem; }
+.save-notice { font-weight: 600; font-size: 0.84rem; padding: 0.3rem 0.55rem; border-radius: 999px; border: 1px solid transparent; }
+.save-notice--success { color: #116241; background: #e8f7ee; border-color: #bfe9cf; }
+.save-notice--error { color: #9f3447; background: #fcecef; border-color: #efc8d0; }
 .panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 0.75rem; padding: 1rem; }
 .import-panel { display: grid; gap: 0.8rem; grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr) auto; align-items: end; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }

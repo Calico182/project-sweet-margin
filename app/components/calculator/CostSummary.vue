@@ -1,6 +1,6 @@
 <template>
   <aside class="summary">
-    <h2 class="summary__title">Cost summary</h2>
+    <h2 class="summary__title">Cost Summary</h2>
     <p v-if="!isActive" class="empty-state">Select a saved recipe to view the cost summary.</p>
     <div v-else class="mode">
       <label for="price-mode">Pricing strategy</label>
