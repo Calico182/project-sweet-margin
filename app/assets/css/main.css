@@ -1,5 +1,5 @@
 :root {
-  --color-bg: #fdf8f4;
+  --color-bg: #fdf1f6;
   --color-surface: #fff9f5;
   --color-text: #2c221c;
   --color-text-muted: #5c4f45;
@@ -8,6 +8,29 @@
   --color-accent-deep: #b84d5c;
   --font-sans: "DM Sans", system-ui, sans-serif;
   --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+}
+
+[data-theme="dark"] {
+  --color-bg: #121418;
+  --color-surface: #1b2026;
+  --color-text: #eef2f7;
+  --color-text-muted: #a8b3c2;
+  --color-border: #2d3642;
+  --color-accent: #f2a0a9;
+  --color-accent-deep: #e17788;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: #202833 !important;
+  color: var(--color-text) !important;
+  border-color: #394657 !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #94a3b8 !important;
 }
 
 *,
